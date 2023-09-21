@@ -46,7 +46,9 @@ public class LocationController {
 
     @PostMapping
     public ResponseEntity<Location> save(@RequestBody Location location){
-        if(location.getId().isEmpty())location.setId(null);
+        if(location.getId()!=null){
+            if(location.getId().isEmpty())location.setId(null);
+        }
         return new ResponseEntity<>(locationRepository.save(location),HttpStatus.CREATED);
     }
 

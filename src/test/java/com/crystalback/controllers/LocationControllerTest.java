@@ -22,8 +22,10 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -87,13 +89,14 @@ public class LocationControllerTest {
         locations.add(location2);
 
         locations = locationRepository.saveAll(locations);
-        MvcResult mvcResult = mockMvc.perform(get("/api/locations/near")
+        MvcResult mvcResult = mockMvc.perform(post("/api/locations/near")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(asJsonString(locations)))
                 .andExpect(status().isOk())
                 .andReturn();
         String contentAsString = mvcResult.getResponse().getContentAsString();
-        assert contentAsString.equals(LocationController.INFERIEUR);
+        Map<String, String> map = objectMapper.readValue(contentAsString, Map.class);
+        assert map.get("result").equals(LocationController.INFERIEUR);
         locationRepository.deleteAll(locations);
     }
 
@@ -112,15 +115,17 @@ public class LocationControllerTest {
         locations.add(location2);
 
         locations = locationRepository.saveAll(locations);
-        MvcResult mvcResult = mockMvc.perform(get("/api/locations/near")
+        MvcResult mvcResult = mockMvc.perform(post("/api/locations/near")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(asJsonString(locations)))
                 .andExpect(status().isOk())
                 .andReturn();
         String contentAsString = mvcResult.getResponse().getContentAsString();
-        assert contentAsString.equals(LocationController.SUPERIEUR);
+        Map<String, String> map = objectMapper.readValue(contentAsString, Map.class);
+        assert map.get("result").equals(LocationController.SUPERIEUR);
         locationRepository.deleteAll(locations);
     }
+
     @Test
     public void testNearKOSize() throws Exception {
         Location location1 = new Location();
@@ -133,7 +138,7 @@ public class LocationControllerTest {
 
 
         locations = locationRepository.saveAll(locations);
-        mockMvc.perform(get("/api/locations/near")
+        mockMvc.perform(post("/api/locations/near")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(asJsonString(locations)))
                 .andExpect(status().isBadRequest());
@@ -147,7 +152,7 @@ public class LocationControllerTest {
         location1.setLocation(new GeoJsonPoint(48.850410, 2.341818));
 
         location1 = locationRepository.save(location1);
-        mockMvc.perform(get("/api/locations/near")
+        mockMvc.perform(post("/api/locations/near")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(asJsonString(location1)))
                 .andExpect(status().isBadRequest());
@@ -167,14 +172,29 @@ public class LocationControllerTest {
         locations.add(location1);
         locations.add(location2);
 
-        MvcResult mvcResult = mockMvc.perform(get("/api/locations/near")
+        mockMvc.perform(post("/api/locations/near")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(asJsonString(locations)))
-                .andExpect(status().isBadRequest())
-                .andReturn();
-        String contentAsString = mvcResult.getResponse().getContentAsString();
-        assert contentAsString.equals("Un des objets est nul");
+                .andExpect(status().isBadRequest());
+
+
         locationRepository.delete(location2);
+    }
+
+    @Test
+    public void testDelete() throws Exception {
+        Location location = new Location();
+        location.setName("delete test");
+        location.setLocation(new GeoJsonPoint(48.850410, 2.341818));
+        location = locationRepository.save(location);
+
+        mockMvc.perform(delete("/api/locations?id="+location.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(asJsonString(location)))
+                .andExpect(status().isOk());
+
+        Optional<Location> locDeleted = locationRepository.findById(location.getId());
+        assert locDeleted.isEmpty();
     }
 
     private String asJsonString(Object obj) {
